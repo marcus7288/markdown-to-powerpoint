@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Markdown → PowerPoint Converter</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgen/3.9.1/pptxgen.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs/dist/pptxgen.bundle.js"></script>
 <style>
 /* ══════════════════════════════════════════════════════════
    RESET & VARIABLES
@@ -875,7 +875,7 @@ async function buildPptx() {
   const filename  = (filenameInput.value.trim()||'presentation')+'.pptx';
   const slides    = splitSlides(raw);
 
-  const pres = new window.pptxgen();
+  const pres = new PptxGenJS();
   pres.layout = is16x9 ? 'LAYOUT_16x9' : 'LAYOUT_4x3';
   pres.title  = filenameInput.value.trim()||'Presentation';
   pres.author = 'Pandoc Reader';
