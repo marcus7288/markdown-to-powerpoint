@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Markdown → PowerPoint Converter</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgen/3.9.1/pptxgen.min.js"></script>
+<style>
+/* ══════════════════════════════════════════════════════════
+   RESET & VARIABLES
+   ══════════════════════════════════════════════════════════ */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:          #0c0e12;
+  --surface:     #141719;
+  --surface2:    #1b1e25;
+  --surface3:    #232838;
+  --border:      #2a2f3d;
+  --border-hi:   #3a4158;
+  --accent:      #6c7ff5;
+  --accent-dim:  rgba(108,127,245,.18);
+  --accent2:     #a06cf5;
+  --green:       #34d399;
+  --amber:       #fbbf24;
+  --red:         #f87171;
+  --text:        #dfe2ea;
+  --text-dim:    #6b7080;
+  --text-mid:    #9a9fb5;
+  --radius:      10px;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* ══════════════════════════════════════════════════════════
+   HEADER
+   ══════════════════════════════════════════════════════════ */
+.header {
+  text-align: center;
+  padding: 40px 20px 28px;
+  position: relative;
+}
+/* subtle radial glow behind title */
+.header::before {
+  content:'';
+  position:absolute; inset:0; pointer-events:none;
+  background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(108,127,245,.12), transparent 70%);
+}
+.header h1 {
+  position:relative;
+  font-size: 2.05em;
+  font-weight: 700;
+  letter-spacing: -0.8px;
+  color: #fff;
+}
+.header h1 .grad {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.header p { position:relative; color: var(--text-dim); margin-top:8px; font-size:.92em; }
+.header p code {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  padding: 2px 7px;
+  border-radius: 5px;
+  color: var(--accent);
+  font-size: .88em;
+}
+
+/* ══════════════════════════════════════════════════════════
+   TOP-LEVEL GRID
+   ══════════════════════════════════════════════════════════ */
+.app {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 0 20px 40px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CARDS
+   ══════════════════════════════════════════════════════════ */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.card-head {
+  padding: 13px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 9px;
+  font-size: .78em;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: .7px;
+}
+.card-head .pip {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 6px var(--accent);
+}
+.card-body { padding: 16px 18px 18px; flex:1; display:flex; flex-direction:column; gap:12px; }
+
+/* ══════════════════════════════════════════════════════════
+   DROP-ZONES
+   ══════════════════════════════════════════════════════════ */
+.dz {
+  border: 1.5px dashed var(--border);
+  border-radius: 8px;
+  padding: 22px 16px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--surface2);
+  transition: border-color .2s, background .2s;
+}
+.dz:hover, .dz.over { border-color: var(--accent); background: var(--accent-dim); }
+.dz .dz-icon { font-size: 28px; margin-bottom: 6px; }
+.dz p { color: var(--text-dim); font-size: .84em; }
+.dz p strong { color: var(--text); }
+.dz p code { background:var(--surface3); padding:1px 5px; border-radius:4px; color:var(--accent); font-size:.88em; }
+input[type=file] { display:none; }
+
+/* ── image gallery strip ── */
+.img-strip {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  max-height: 90px; overflow-y: auto;
+}
+.img-thumb {
+  width: 60px; height: 60px; border-radius:6px;
+  border: 1px solid var(--border);
+  object-fit: cover;
+  position: relative;
+  cursor: default;
+  transition: border-color .2s;
+}
+.img-thumb:hover { border-color: var(--accent); }
+.img-chip {
+  display: inline-flex; align-items:center; gap:5px;
+  background: var(--surface3); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px;
+  font-size: .76em; color: var(--text-mid);
+  max-width: 110px;
+}
+.img-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.img-chip .rm { cursor:pointer; color:var(--text-dim); font-size:1.1em; }
+.img-chip .rm:hover { color:var(--red); }
+
+/* ══════════════════════════════════════════════════════════
+   TEXTAREA
+   ══════════════════════════════════════════════════════════ */
+.or-bar { text-align:center; color:var(--text-dim); font-size:.79em; margin:-4px 0; }
+
+textarea {
+  width:100%; min-height:220px; resize:vertical;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Consolas','SF Mono','Courier New',monospace;
+  font-size: .85em;
+  padding: 14px;
+  line-height: 1.65;
+  outline: none;
+  transition: border-color .25s;
+}
+textarea:focus { border-color: var(--accent); }
+textarea::placeholder { color: var(--text-dim); }
+
+/* ══════════════════════════════════════════════════════════
+   OPTIONS ROW
+   ══════════════════════════════════════════════════════════ */
+.opts {
+  display: flex; flex-wrap:wrap; gap:12px; align-items:flex-end;
+}
+.opt label {
+  display:block; font-size:.73em; color:var(--text-dim);
+  text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;
+}
+.opt select, .opt input[type=text] {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 7px 10px;
+  font-size: .86em;
+  outline: none;
+  transition: border-color .25s;
+}
+.opt select:focus, .opt input[type=text]:focus { border-color: var(--accent); }
+.opt select { min-width:130px; }
+.opt input[type=text] { width: 150px; }
+
+/* ══════════════════════════════════════════════════════════
+   BUTTONS
+   ══════════════════════════════════════════════════════════ */
+.btn-row { display:flex; gap:9px; margin-top:4px; }
+.btn {
+  padding: 9px 18px;
+  border: none;
+  border-radius: 7px;
+  font-size: .88em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .12s, box-shadow .2s, opacity .2s;
+  white-space: nowrap;
+}
+.btn:active { transform: scale(.955); }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  flex: 1;
+}
+.btn-primary:hover { box-shadow: 0 4px 18px rgba(108,127,245,.4); }
+.btn-primary:disabled { opacity:.35; cursor:not-allowed; box-shadow:none; }
+
+.btn-secondary {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover { border-color: var(--accent); }
+
+.btn-ghost {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  font-size: .82em;
+  padding: 6px 12px;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+/* ══════════════════════════════════════════════════════════
+   PREVIEW PANE
+   ══════════════════════════════════════════════════════════ */
+.preview-scroll {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 520px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface2);
+}
+/* mini slide cards inside preview */
+.slide-card {
+  padding: 18px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  animation: fadeSlide .25s ease both;
+}
+.slide-card:last-child { border-bottom: none; }
+@keyframes fadeSlide { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+
+.slide-badge {
+  display: inline-flex; align-items:center; gap:5px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #fff;
+  font-size: .7em; font-weight:700;
+  border-radius: 5px;
+  padding: 2px 8px;
+  margin-bottom: 8px;
+  letter-spacing: .4px;
+}
+
+/* preview typography */
+.slide-card h1 { font-size:1.35em; color:#fff; margin-bottom:4px; }
+.slide-card h2 { font-size:1.1em; color:#fff; margin:.5em 0 .2em; }
+.slide-card h3 { font-size:.97em; color:var(--accent); margin:.45em 0 .15em; font-style:italic; }
+.slide-card p  { font-size:.88em; color:var(--text-mid); margin-bottom:.35em; }
+.slide-card ul, .slide-card ol { padding-left:1.3em; margin-bottom:.35em; }
+.slide-card li { font-size:.87em; color:var(--text-mid); margin-bottom:.15em; }
+.slide-card code { background:var(--surface3); padding:1px 6px; border-radius:4px; color:var(--accent); font-size:.85em; }
+.slide-card pre { background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:10px; margin:.4em 0; overflow-x:auto; }
+.slide-card pre code { background:none; padding:0; color:#8fb8ff; }
+.slide-card blockquote { border-left:3px solid var(--accent); padding-left:10px; color:var(--text-dim); font-style:italic; font-size:.88em; margin:.35em 0; }
+.slide-card table { width:100%; border-collapse:collapse; margin:.4em 0; font-size:.84em; }
+.slide-card th { background:var(--accent-dim); color:var(--accent); padding:5px 9px; text-align:left; font-weight:600; border-bottom:1px solid var(--border); }
+.slide-card td { border-bottom:1px solid var(--border); padding:5px 9px; color:var(--text-mid); }
+
+/* two-column preview */
+.preview-2col { display:flex; gap:16px; }
+.preview-2col > div { flex:1; min-width:0; }
+.col-divider { width:1px; background:var(--border); align-self:stretch; flex-shrink:0; }
+
+/* image in preview */
+.slide-card img { max-width:100%; border-radius:6px; margin:.35em 0; border:1px solid var(--border); }
+
+/* placeholder when empty */
+.preview-empty {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  min-height:320px; color:var(--text-dim); text-align:center; padding:30px;
+}
+.preview-empty .pe-icon { font-size:2.4em; margin-bottom:12px; opacity:.5; }
+.preview-empty p { font-size:.88em; }
+
+/* ══════════════════════════════════════════════════════════
+   SYNTAX CHEAT SHEET (collapsible)
+   ══════════════════════════════════════════════════════════ */
+.cheat { margin-top:4px; }
+.cheat summary {
+  cursor:pointer; font-size:.79em; color:var(--accent);
+  user-select:none; list-style:none; display:flex; align-items:center; gap:5px;
+}
+.cheat summary::-webkit-details-marker { display:none; }
+.cheat summary .arr { transition:transform .2s; display:inline-block; }
+.cheat[open] summary .arr { transform:rotate(90deg); }
+.cheat-body {
+  margin-top:10px; padding:12px 14px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:8px;
+  font-size:.8em; color:var(--text-mid); line-height:1.7;
+  display:grid; grid-template-columns:1fr 1fr; gap:0 20px;
+}
+.cheat-row { display:flex; gap:8px; align-items:baseline; }
+.cheat-row code { color:var(--accent); background:var(--surface3); padding:1px 6px; border-radius:4px; white-space:nowrap; flex-shrink:0; }
+.cheat-row span { color:var(--text-dim); }
+
+/* ══════════════════════════════════════════════════════════
+   TOAST
+   ══════════════════════════════════════════════════════════ */
+.toast {
+  position:fixed; bottom:28px; left:50%;
+  transform:translateX(-50%) translateY(90px);
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:10px; padding:11px 20px;
+  font-size:.88em; color:var(--text);
+  box-shadow:0 8px 32px rgba(0,0,0,.45);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1);
+  z-index:999; display:flex; align-items:center; gap:9px;
+  white-space:nowrap;
+}
+.toast.show { transform:translateX(-50%) translateY(0); }
+.toast .t-icon { font-size:1.15em; }
+.toast.ok   .t-icon { color:var(--green); }
+.toast.err  .t-icon { color:var(--red); }
+.toast.info .t-icon { color:var(--amber); }
+
+/* ══════════════════════════════════════════════════════════
+   RESPONSIVE
+   ══════════════════════════════════════════════════════════ */
+@media (max-width:720px) {
+  .app { grid-template-columns:1fr; }
+  .cheat-body { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<div class="header">
+  <h1>📄 <span class="grad">Markdown → PowerPoint</span></h1>
+  <p>
+    Split slides with <code>---</code> &middot;
+    Two-columns with <code>|COL|</code> &middot;
+    Images with <code>![alt](name.png)</code>
+  </p>
+</div>
+
+<!-- ── APP GRID ── -->
+<div class="app">
+
+  <!-- ════════ LEFT CARD: INPUT ════════ -->
+  <div class="card">
+    <div class="card-head"><div class="pip"></div> Input</div>
+    <div class="card-body">
+
+      <!-- Markdown file drop -->
+      <div class="dz" id="dzMd">
+        <div class="dz-icon">📄</div>
+        <p><strong>Drop a .md file</strong> or click to upload</p>
+      </div>
+      <input type="file" id="fileMd" accept=".md,.markdown,.txt">
+      <div id="mdBadge" style="display:none;" class="img-chip" style="margin-top:-6px;">
+        <span id="mdBadgeName"></span>
+        <span class="rm" id="mdClear">✕</span>
+      </div>
+
+      <div class="or-bar">— or paste / type below —</div>
+
+      <textarea id="mdInput" placeholder="# My Presentation&#10;&#10;Welcome to the show!&#10;&#10;---&#10;&#10;## Two Column Slide&#10;&#10;Left side bullet one&#10;- Left bullet two&#10;&#10;|COL|&#10;&#10;Right side content&#10;- Right bullet two&#10;&#10;---&#10;&#10;## Image + Text&#10;&#10;![My photo](photo.jpg)&#10;&#10;|COL|&#10;&#10;- Caption for the photo&#10;- More details here&#10;&#10;---&#10;&#10;## Thank You&#10;&#10;Questions?"></textarea>
+
+      <!-- Image drop -->
+      <div class="dz" id="dzImg" style="padding:14px 16px;">
+        <div class="dz-icon" style="font-size:22px; margin-bottom:2px;">🖼️</div>
+        <p><strong>Drop images here</strong> or click &mdash; reference them as <code>![alt](filename)</code></p>
+      </div>
+      <input type="file" id="fileImg" accept="image/*" multiple>
+      <div id="imgStrip" class="img-strip" style="margin-top:-4px; display:none;"></div>
+
+      <!-- Options -->
+      <div class="opts">
+        <div class="opt">
+          <label>Theme</label>
+          <select id="themeSelect">
+            <option value="midnight">Midnight Executive</option>
+            <option value="forest">Forest &amp; Moss</option>
+            <option value="coral">Coral Energy</option>
+            <option value="ocean">Ocean Gradient</option>
+            <option value="charcoal">Charcoal Minimal</option>
+            <option value="teal">Teal Trust</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label>Layout</label>
+          <select id="layoutSelect">
+            <option value="16x9">16:9 Widescreen</option>
+            <option value="4x3">4:3 Standard</option>
+          </select>
+        </div>
+        <div class="opt">
+          <label>Filename</label>
+          <input type="text" id="filenameInput" value="presentation">
+        </div>
+      </div>
+
+      <!-- Syntax cheat sheet -->
+      <details class="cheat">
+        <summary>⚡ <span class="arr">▶</span> Syntax Quick Reference</summary>
+        <div class="cheat-body">
+          <div class="cheat-row"><code>---</code>      <span>New slide break</span></div>
+          <div class="cheat-row"><code># Title</code>  <span>Slide title</span></div>
+          <div class="cheat-row"><code>## Sub</code>   <span>Subtitle / heading</span></div>
+          <div class="cheat-row"><code>- item</code>   <span>Bullet point</span></div>
+          <div class="cheat-row"><code>1. item</code>  <span>Numbered list</span></div>
+          <div class="cheat-row"><code>|COL|</code>    <span>Two-column split</span></div>
+          <div class="cheat-row"><code>> quote</code>  <span>Blockquote</span></div>
+          <div class="cheat-row"><code>![a](f.png)</code><span>Insert image</span></div>
+          <div class="cheat-row"><code>```...```</code> <span>Code block</span></div>
+          <div class="cheat-row"><code>| H1 | H2 |</code><span>Table</span></div>
+        </div>
+      </details>
+
+      <!-- Buttons -->
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="previewBtn">👁 Preview</button>
+        <button class="btn btn-primary"    id="exportBtn" >⬇ Export PPTX</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════ RIGHT CARD: PREVIEW ════════ -->
+  <div class="card">
+    <div class="card-head"><div class="pip"></div> Slide Preview</div>
+    <div class="card-body" style="padding:10px 12px 14px;">
+      <div class="preview-scroll" id="previewScroll">
+        <div class="preview-empty">
+          <div class="pe-icon">👁</div>
+          <p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- ── TOAST ── -->
+<div class="toast" id="toast"><span class="t-icon">✓</span><span id="toastMsg">Done</span></div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     JAVASCRIPT
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+// ─── THEMES ───────────────────────────────────────────────────────
+const THEMES = {
+  midnight:  { bg:"1E2761", accent:"CADCFC", titleTxt:"FFFFFF", bodyTxt:"CADCFC", bulletTxt:"E8ECF4", codeBg:"141B3A" },
+  forest:    { bg:"2C5F2D", accent:"97BC62", titleTxt:"FFFFFF", bodyTxt:"F5F5F5", bulletTxt:"E8F0E0", codeBg:"1A3D1B" },
+  coral:     { bg:"2F3C7E", accent:"F9E795", titleTxt:"FFFFFF", bodyTxt:"F5F5F5", bulletTxt:"E8EAF0", codeBg:"1E2650" },
+  ocean:     { bg:"065A82", accent:"1C7293", titleTxt:"FFFFFF", bodyTxt:"E0ECFA", bulletTxt:"D0E4F2", codeBg:"04384F" },
+  charcoal:  { bg:"36454F", accent:"F2F2F2", titleTxt:"FFFFFF", bodyTxt:"F2F2F2", bulletTxt:"E0E0E0", codeBg:"243035" },
+  teal:      { bg:"028090", accent:"02C39A", titleTxt:"FFFFFF", bodyTxt:"F0FAFA", bulletTxt:"E0F5F5", codeBg:"015560" }
+};
+
+// ─── IMAGE REGISTRY: name → base64 data URI ──────────────────────
+const IMAGES = {};
+
+// ─── DOM ──────────────────────────────────────────────────────────
+const dzMd         = document.getElementById('dzMd');
+const fileMd       = document.getElementById('fileMd');
+const mdBadge      = document.getElementById('mdBadge');
+const mdBadgeName  = document.getElementById('mdBadgeName');
+const mdClear      = document.getElementById('mdClear');
+const dzImg        = document.getElementById('dzImg');
+const fileImg      = document.getElementById('fileImg');
+const imgStrip     = document.getElementById('imgStrip');
+const mdInput      = document.getElementById('mdInput');
+const previewScroll= document.getElementById('previewScroll');
+const previewBtn   = document.getElementById('previewBtn');
+const exportBtn    = document.getElementById('exportBtn');
+const themeSelect  = document.getElementById('themeSelect');
+const layoutSelect = document.getElementById('layoutSelect');
+const filenameInput= document.getElementById('filenameInput');
+const toastEl      = document.getElementById('toast');
+const toastMsg     = document.getElementById('toastMsg');
+
+// ─── TOAST ────────────────────────────────────────────────────────
+let _toastT;
+function toast(msg, type='ok') {
+  toastMsg.textContent = msg;
+  toastEl.className = 'toast show ' + type;
+  toastEl.querySelector('.t-icon').textContent = type==='ok'?'✓':type==='err'?'✕':'⚠';
+  clearTimeout(_toastT);
+  _toastT = setTimeout(()=> toastEl.classList.remove('show'), 3400);
+}
+
+// ─── MD FILE DROP ─────────────────────────────────────────────────
+dzMd.addEventListener('click', ()=> fileMd.click());
+dzMd.addEventListener('dragover', e=>{ e.preventDefault(); dzMd.classList.add('over'); });
+dzMd.addEventListener('dragleave', ()=> dzMd.classList.remove('over'));
+dzMd.addEventListener('drop', e=>{ e.preventDefault(); dzMd.classList.remove('over'); if(e.dataTransfer.files[0]) loadMdFile(e.dataTransfer.files[0]); });
+fileMd.addEventListener('change', e=>{ if(e.target.files[0]) loadMdFile(e.target.files[0]); });
+mdClear.addEventListener('click', ()=>{ fileMd.value=''; mdBadge.style.display='none'; });
+
+function loadMdFile(file) {
+  new FileReader().onload = ev => {
+    mdInput.value = ev.target.result;
+    mdBadgeName.textContent = file.name;
+    mdBadge.style.display = 'inline-flex';
+    renderPreview();
+    toast('Loaded: ' + file.name);
+  };
+  const r = new FileReader(); r.onload = ev => {
+    mdInput.value = ev.target.result;
+    mdBadgeName.textContent = file.name;
+    mdBadge.style.display = 'inline-flex';
+    renderPreview();
+    toast('Loaded: ' + file.name);
+  };
+  r.readAsText(file);
+}
+
+// ─── IMAGE DROP ───────────────────────────────────────────────────
+dzImg.addEventListener('click', ()=> fileImg.click());
+dzImg.addEventListener('dragover', e=>{ e.preventDefault(); dzImg.classList.add('over'); });
+dzImg.addEventListener('dragleave', ()=> dzImg.classList.remove('over'));
+dzImg.addEventListener('drop', e=>{ e.preventDefault(); dzImg.classList.remove('over'); Array.from(e.dataTransfer.files).forEach(addImage); });
+fileImg.addEventListener('change', e=>{ Array.from(e.target.files).forEach(addImage); e.target.value=''; });
+
+function addImage(file) {
+  if (!file.type.startsWith('image/')) return;
+  const name = file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    IMAGES[name] = ev.target.result;  // full data URI
+    rebuildStrip();
+    toast('Image added: ' + name);
+  };
+  reader.readAsDataURL(file);
+}
+
+function rebuildStrip() {
+  const names = Object.keys(IMAGES);
+  if (!names.length) { imgStrip.style.display='none'; imgStrip.innerHTML=''; return; }
+  imgStrip.style.display = 'flex';
+  imgStrip.innerHTML = names.map(n =>
+    `<div style="display:inline-flex;align-items:center;gap:4px;">
+       <img src="${IMAGES[n]}" class="img-thumb" title="${n}">
+       <span class="img-chip"><span>${n}</span><span class="rm" data-rm="${n}">✕</span></span>
+     </div>`
+  ).join('');
+  imgStrip.querySelectorAll('.rm').forEach(el => {
+    el.addEventListener('click', ()=>{ delete IMAGES[el.dataset.rm]; rebuildStrip(); });
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PARSING
+// ═══════════════════════════════════════════════════════════════════
+
+/* Split raw markdown on --- into slide chunks */
+function splitSlides(raw) {
+  return raw.split(/^\s*---\s*$/m).map(s=>s.trim()).filter(s=>s);
+}
+
+/* Detect if a chunk uses the two-column |COL| separator */
+function isTwoCol(chunk) { return /^\|COL\|$/m.test(chunk); }
+
+/* Split a two-col chunk into [left, right] */
+function splitCols(chunk) {
+  const parts = chunk.split(/^\|COL\|$/m);
+  return [parts[0].trim(), (parts[1]||'').trim()];
+}
+
+/* ── Inline markdown → HTML ── */
+function inlineHtml(t) {
+  return t
+    .replace(/`([^`]+)`/g,'<code>$1</code>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" style="color:var(--accent);">$1</a>');
+}
+
+/* Strip inline md for pptx plain text */
+function stripInline(t) {
+  return t
+    .replace(/`([^`]+)`/g,'$1')
+    .replace(/\*\*(.+?)\*\*/g,'$1')
+    .replace(/\*(.+?)\*/g,'$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1');
+}
+
+/* ── Convert a single-column text block → HTML string ── */
+function blockToHtml(text) {
+  const lines = text.split('\n');
+  let html = '', inList=false, lt='', inPre=false, pre='';
+
+  for (let i=0; i<lines.length; i++) {
+    const l = lines[i];
+    // fenced code
+    if (l.trim().startsWith('```')) {
+      if (!inPre) { inPre=true; pre=''; continue; }
+      if(inList){html+='</'+lt+'>';inList=false;}
+      html += '<pre><code>'+pre.replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</code></pre>';
+      inPre=false; continue;
+    }
+    if (inPre) { pre += l+'\n'; continue; }
+
+    // heading
+    const hm = l.match(/^(#{1,3})\s+(.*)/);
+    if (hm) { if(inList){html+='</'+lt+'>';inList=false;} html+='<h'+hm[1].length+'>'+inlineHtml(hm[2])+'</h'+hm[1].length+'>'; continue; }
+
+    // image
+    const im = l.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
+    if (im) {
+      if(inList){html+='</'+lt+'>';inList=false;}
+      const src = IMAGES[im[2]] || im[2];
+      html += '<img src="'+src+'" alt="'+im[1]+'">';
+      continue;
+    }
+
+    // ul
+    const um = l.match(/^[-*+]\s+(.*)/);
+    if (um) { if(!inList||lt!=='ul'){if(inList)html+='</'+lt+'>';html+='<ul>';inList=true;lt='ul';} html+='<li>'+inlineHtml(um[1])+'</li>'; continue; }
+
+    // ol
+    const om = l.match(/^\d+\.\s+(.*)/);
+    if (om) { if(!inList||lt!=='ol'){if(inList)html+='</'+lt+'>';html+='<ol>';inList=true;lt='ol';} html+='<li>'+inlineHtml(om[1])+'</li>'; continue; }
+
+    // blockquote
+    const bm = l.match(/^>\s*(.*)/);
+    if (bm) { if(inList){html+='</'+lt+'>';inList=false;} html+='<blockquote>'+inlineHtml(bm[1])+'</blockquote>'; continue; }
+
+    // table
+    if (l.trim().startsWith('|')) {
+      if(inList){html+='</'+lt+'>';inList=false;}
+      let tl=[], j=i;
+      while(j<lines.length && lines[j].trim().startsWith('|')){tl.push(lines[j]);j++;}
+      i=j-1;
+      html += buildTableHtml(tl);
+      continue;
+    }
+
+    // blank / text
+    if(inList){html+='</'+lt+'>';inList=false;}
+    if(l.trim()==='') continue;
+    html += '<p>'+inlineHtml(l.trim())+'</p>';
+  }
+  if(inList) html+='</'+lt+'>';
+  return html;
+}
+
+function buildTableHtml(rows) {
+  let h='<table>';
+  rows.forEach((row,idx)=>{
+    if(row.replace(/[-|: ]/g,)==='') return;
+    const cells=row.split('|').map(c=>c.trim()).filter(c=>c);
+    const tag=idx===0?'th':'td';
+    h+='<tr>'+cells.map(c=>'<'+tag+'>'+inlineHtml(c)+'</'+tag+'>').join('')+'</tr>';
+  });
+  return h+'</table>';
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// LIVE PREVIEW
+// ═══════════════════════════════════════════════════════════════════
+function renderPreview() {
+  const raw = mdInput.value.trim();
+  if (!raw) {
+    previewScroll.innerHTML = '<div class="preview-empty"><div class="pe-icon">👁</div><p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p></div>';
+    return;
+  }
+  const slides = splitSlides(raw);
+  let out = '';
+  slides.forEach((chunk, i) => {
+    out += `<div class="slide-card"><span class="slide-badge">Slide ${i+1}</span>`;
+    if (isTwoCol(chunk)) {
+      const [left, right] = splitCols(chunk);
+      out += '<div class="preview-2col">';
+      out += '<div>' + blockToHtml(left)  + '</div>';
+      out += '<div class="col-divider"></div>';
+      out += '<div>' + blockToHtml(right) + '</div>';
+      out += '</div>';
+    } else {
+      out += blockToHtml(chunk);
+    }
+    out += '</div>';
+  });
+  previewScroll.innerHTML = out;
+}
+
+// wire live update
+mdInput.addEventListener('input', renderPreview);
+previewBtn.addEventListener('click', ()=>{ renderPreview(); toast('Preview refreshed — '+splitSlides(mdInput.value.trim()).length+' slide(s)'); });
+
+// initial
+renderPreview();
+
+// ═══════════════════════════════════════════════════════════════════
+// PPTX EXPORT
+// ═══════════════════════════════════════════════════════════════════
+
+/* Parse one column's text lines into structured items */
+function parseItems(text) {
+  const lines = text.split('\n');
+  let items = [], inPre=false, preLines=[];
+  for (let i=0;i<lines.length;i++) {
+    const l = lines[i];
+    if (l.trim().startsWith('```')) {
+      if(!inPre){inPre=true;preLines=[];continue;}
+      items.push({type:'code', content:preLines.join('\n')});
+      inPre=false; continue;
+    }
+    if(inPre){preLines.push(l);continue;}
+
+    const hm=l.match(/^(#{1,3})\s+(.*)/);
+    if(hm){items.push({type:'heading',level:hm[1].length,content:hm[2]});continue;}
+
+    const im=l.match(/^!\[([^\]]*)\]\(([^)]+)\)/);
+    if(im){items.push({type:'image',alt:im[1],src:im[2]});continue;}
+
+    const um=l.match(/^[-*+]\s+(.*)/);
+    if(um){items.push({type:'bullet',content:um[1]});continue;}
+
+    const om=l.match(/^\d+\.\s+(.*)/);
+    if(om){items.push({type:'numbered',content:om[1]});continue;}
+
+    const bm=l.match(/^>\s*(.*)/);
+    if(bm){items.push({type:'quote',content:bm[1]});continue;}
+
+    if(l.trim().startsWith('|')){
+      let tl=[],j=i;
+      while(j<lines.length&&lines[j].trim().startsWith('|')){tl.push(lines[j]);j++;}
+      i=j-1;
+      items.push({type:'table',rows:tl});
+      continue;
+    }
+    if(l.trim()) items.push({type:'text',content:l.trim()});
+  }
+  return items;
+}
+
+/* Extract title + subtitle from items array (mutates by removing them) */
+function extractTitle(items) {
+  let title=null, subtitle=null;
+  if(items.length && items[0].type==='heading' && items[0].level<=2) { title=items.shift().content; }
+  if(items.length && items[0].type==='heading' && items[0].level<=2) { subtitle=items.shift().content; }
+  return {title, subtitle};
+}
+
+/* Render a list of items into a pptx slide column starting at (x,y) within (w, maxH).
+   Returns the final y used. */
+function renderItems(slide, pres, items, theme, x, y, w, maxY) {
+  let curY = y;
+  items.forEach(item => {
+    if (curY >= maxY) return;
+    switch(item.type) {
+      case 'bullet':
+        slide.addText(stripInline(item.content), {
+          x, y:curY, w, h:0.36,
+          fontSize:13, fontFace:'Calibri', color:theme.bulletTxt, bullet:true, valign:'top'
+        });
+        curY += 0.38;
+        break;
+      case 'numbered':
+        slide.addText(stripInline(item.content), {
+          x, y:curY, w, h:0.36,
+          fontSize:13, fontFace:'Calibri', color:theme.bulletTxt, bullet:{type:'number'}, valign:'top'
+        });
+        curY += 0.38;
+        break;
+      case 'heading':
+        if(curY>y) curY+=0.1;
+        slide.addText(stripInline(item.content), {
+          x, y:curY, w, h:0.38,
+          fontSize:16, fontFace:'Calibri', bold:true, color:theme.accent, valign:'top'
+        });
+        curY += 0.42;
+        break;
+      case 'text':
+        slide.addText(stripInline(item.content), {
+          x, y:curY, w, h:0.36,
+          fontSize:13, fontFace:'Calibri', color:theme.bodyTxt, valign:'top'
+        });
+        curY += 0.38;
+        break;
+      case 'quote':
+        slide.addShape(pres.shapes.RECTANGLE, { x, y:curY, w:0.06, h:0.4, fill:{color:theme.accent} });
+        slide.addText(stripInline(item.content), {
+          x:x+0.16, y:curY, w:w-0.16, h:0.4,
+          fontSize:12, fontFace:'Calibri', color:theme.bodyTxt, italic:true, valign:'middle'
+        });
+        curY += 0.48;
+        break;
+      case 'code': {
+        const codeLines = item.content.split('\n').length;
+        const cH = Math.min(codeLines*0.26+0.18, maxY-curY-0.05);
+        if(cH<0.3) break;
+        slide.addShape(pres.shapes.RECTANGLE, { x, y:curY, w, h:cH, fill:{color:theme.codeBg}, line:{color:theme.accent,width:0.4} });
+        slide.addText(item.content, { x:x+0.1, y:curY+0.06, w:w-0.2, h:cH-0.12, fontSize:9, fontFace:'Consolas', color:'8FB8FF', valign:'top' });
+        curY += cH+0.1;
+        break;
+      }
+      case 'image': {
+        const src = IMAGES[item.src] || item.src;
+        const imgH = Math.min(2.2, maxY-curY-0.1);
+        if(imgH<0.5) break;
+        try {
+          if(IMAGES[item.src]) {
+            slide.addImage({ data:src, x, y:curY, w, h:imgH, sizing:{type:'contain',w,h:imgH} });
+          } else {
+            slide.addImage({ path:src, x, y:curY, w, h:imgH, sizing:{type:'contain',w,h:imgH} });
+          }
+        } catch(e) { /* skip bad image */ }
+        curY += imgH+0.1;
+        break;
+      }
+      case 'table': {
+        const parsed=[];
+        item.rows.forEach((row,ri)=>{
+          if(row.replace(/[-|: ]/g,)==='') return;
+          parsed.push({cells:row.split('|').map(c=>c.trim()).filter(c=>c), isHeader:ri===0});
+        });
+        if(!parsed.length) break;
+        const cols=parsed[0].cells.length;
+        const colW=w/cols;
+        const rowH=0.3;
+        const tH=parsed.length*rowH;
+        if(curY+tH>maxY) break;
+        const td=parsed.map(r=>r.cells.map(c=>({
+          text:stripInline(c),
+          options:r.isHeader
+            ?{fill:{color:theme.accent},color:theme.bg,bold:true,fontSize:10,fontFace:'Calibri',align:'left',valign:'middle'}
+            :{fill:{color:theme.codeBg},color:theme.bodyTxt,fontSize:10,fontFace:'Calibri',align:'left',valign:'middle'}
+        })));
+        slide.addTable(td,{x,y:curY,w,h:tH,colW:Array(cols).fill(colW),border:{pt:0.4,color:theme.accent}});
+        curY+=tH+0.15;
+        break;
+      }
+    }
+  });
+  return curY;
+}
+
+/* ── MAIN EXPORT ── */
+async function buildPptx() {
+  const raw = mdInput.value.trim();
+  if (!raw) { toast('Nothing to export — paste or upload Markdown first.','err'); return; }
+
+  const themeName = themeSelect.value;
+  const theme     = THEMES[themeName];
+  const is16x9    = layoutSelect.value === '16x9';
+  const W         = 10;
+  const H         = is16x9 ? 5.625 : 7.5;
+  const filename  = (filenameInput.value.trim()||'presentation')+'.pptx';
+  const slides    = splitSlides(raw);
+
+  const pres = new window.pptxgen();
+  pres.layout = is16x9 ? 'LAYOUT_16x9' : 'LAYOUT_4x3';
+  pres.title  = filenameInput.value.trim()||'Presentation';
+  pres.author = 'Pandoc Reader';
+
+  slides.forEach((chunk, idx) => {
+    const slide = pres.addSlide();
+    slide.background = { color: theme.bg };
+
+    // left accent stripe
+    slide.addShape(pres.shapes.RECTANGLE, { x:0, y:0, w:0.17, h:H, fill:{color:theme.accent} });
+
+    // slide number bottom-right
+    slide.addText(String(idx+1), { x:W-0.65, y:H-0.4, w:0.5, h:0.3, fontSize:9, color:theme.accent, align:'right', valign:'bottom' });
+
+    // ── detect two-col vs single ──
+    const twocol = isTwoCol(chunk);
+
+    if (twocol) {
+      const [leftRaw, rightRaw] = splitCols(chunk);
+      const leftItems  = parseItems(leftRaw);
+      const rightItems = parseItems(rightRaw);
+
+      // Extract shared title from whichever side has one at the top
+      const {title, subtitle} = extractTitle(leftItems);
+
+      let bodyY = 0.38;
+      if (title) {
+        slide.addText(stripInline(title), { x:0.45, y:0.28, w:W-0.9, h:0.7, fontSize:28, fontFace:'Calibri', bold:true, color:theme.titleTxt, valign:'top' });
+        bodyY = 1.05;
+      }
+      if (subtitle) {
+        slide.addText(stripInline(subtitle), { x:0.45, y:bodyY, w:W-0.9, h:0.38, fontSize:15, fontFace:'Calibri', color:theme.accent, italic:true, valign:'top' });
+        bodyY += 0.42;
+      }
+
+      // column divider (subtle)
+      const midX = W/2;
+      slide.addShape(pres.shapes.RECTANGLE, { x:midX-0.01, y:bodyY, w:0.02, h:H-bodyY-0.45, fill:{color:theme.accent, transparency:60} });
+
+      // left column
+      renderItems(slide, pres, leftItems,  theme, 0.45,       bodyY, midX-0.7,  H-0.45);
+      // right column
+      renderItems(slide, pres, rightItems, theme, midX+0.35,  bodyY, midX-0.7,  H-0.45);
+
+    } else {
+      // ── SINGLE COLUMN ──
+      const items = parseItems(chunk);
+      const {title, subtitle} = extractTitle(items);
+
+      let bodyY = 0.38;
+      const isTitleOnly = (title && !subtitle && items.length===0);
+
+      if (title) {
+        const tY = isTitleOnly ? H/2 - 0.6 : 0.28;
+        slide.addText(stripInline(title), {
+          x:0.45, y:tY, w:W-0.9, h:0.9,
+          fontSize: isTitleOnly ? 38 : 28,
+          fontFace:'Calibri', bold:true, color:theme.titleTxt,
+          align: isTitleOnly ? 'center' : 'left', valign:'top'
+        });
+        bodyY = isTitleOnly ? tY+1.0 : 1.1;
+      }
+      if (subtitle) {
+        slide.addText(stripInline(subtitle), {
+          x:0.45, y:bodyY, w:W-0.9, h:0.5,
+          fontSize:17, fontFace:'Calibri', color:theme.accent, italic:true,
+          align: isTitleOnly ? 'center' : 'left', valign:'top'
+        });
+        bodyY += 0.55;
+      }
+
+      if (items.length===0 && !title) {
+        slide.addText('(empty slide)', { x:0, y:0, w:W, h:H, fontSize:18, color:theme.accent, align:'center', valign:'middle', italic:true });
+      } else {
+        renderItems(slide, pres, items, theme, 0.45, bodyY, W-0.9, H-0.45);
+      }
+    }
+  });
+
+  // ── download ──
+  exportBtn.disabled = true;
+  exportBtn.textContent = '⬇ Generating…';
+  try {
+    await pres.writeFile({ fileName: filename });
+    toast('Downloaded ' + filename + ' (' + slides.length + ' slide' + (slides.length!==1?'s':'') + ')');
+  } catch(e) {
+    toast('Export error: ' + e.message, 'err');
+  }
+  exportBtn.disabled = false;
+  exportBtn.textContent = '⬇ Export PPTX';
+}
+
+exportBtn.addEventListener('click', buildPptx);
+</script>
+</body>
+</html>
