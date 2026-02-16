@@ -69,9 +69,19 @@ The `splitCols()` function now includes Pandoc parsing logic that:
 3. Extracts and trims content from each column
 4. Falls back to legacy `|COL|` splitting if needed
 
+## Encoding Fix
+
+The HTML file had mojibake errors (double-UTF-8 encoding) affecting special characters:
+- → (right arrow) in title
+- ═ (box drawing) in CSS comments  
+- — (em dash) in UI text
+- ✓✕⚡▶… (various symbols) in buttons and UI
+
+All mojibake has been corrected to proper UTF-8 encoding.
+
 ## Files Included
 
-1. **pandoc-to-pptx.html** - Updated converter with Pandoc support
+1. **pandoc-to-pptx.html** - Updated converter with Pandoc support and encoding fixes
 2. **README.md** - Updated documentation with syntax examples
 3. **pandoc-sample.md** - Sample presentation demonstrating both syntaxes
 
