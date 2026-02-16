@@ -360,7 +360,7 @@ textarea::placeholder { color: var(--text-dim); }
 
 <!-- ── HEADER ── -->
 <div class="header">
-  <h1>ðŸ“„ <span class="grad">Markdown → PowerPoint</span></h1>
+  <h1>📄 <span class="grad">Markdown → PowerPoint</span></h1>
   <p>
     Split slides with <code>---</code> &middot;
     Two-columns with <code>|COL|</code> &middot;
@@ -378,7 +378,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Markdown file drop -->
       <div class="dz" id="dzMd">
-        <div class="dz-icon">ðŸ“„</div>
+        <div class="dz-icon">📄</div>
         <p><strong>Drop a .md file</strong> or click to upload</p>
       </div>
       <input type="file" id="fileMd" accept=".md,.markdown,.txt">
@@ -393,7 +393,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Image drop -->
       <div class="dz" id="dzImg" style="padding:14px 16px;">
-        <div class="dz-icon" style="font-size:22px; margin-bottom:2px;">ðŸ–¼ï¸</div>
+        <div class="dz-icon" style="font-size:22px; margin-bottom:2px;">🖼️</div>
         <p><strong>Drop images here</strong> or click &mdash; reference them as <code>![alt](filename)</code></p>
       </div>
       <input type="file" id="fileImg" accept="image/*" multiple>
@@ -445,7 +445,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Buttons -->
       <div class="btn-row">
-        <button class="btn btn-secondary" id="previewBtn">ðŸ‘ Preview</button>
+        <button class="btn btn-secondary" id="previewBtn">👁 Preview</button>
         <button class="btn btn-primary"    id="exportBtn" >⬇ Export PPTX</button>
       </div>
     </div>
@@ -457,7 +457,7 @@ textarea::placeholder { color: var(--text-dim); }
     <div class="card-body" style="padding:10px 12px 14px;">
       <div class="preview-scroll" id="previewScroll">
         <div class="preview-empty">
-          <div class="pe-icon">ðŸ‘</div>
+          <div class="pe-icon">👁</div>
           <p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p>
         </div>
       </div>
@@ -719,7 +719,7 @@ function buildTableHtml(rows) {
 function renderPreview() {
   const raw = mdInput.value.trim();
   if (!raw) {
-    previewScroll.innerHTML = '<div class="preview-empty"><div class="pe-icon">ðŸ‘</div><p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p></div>';
+    previewScroll.innerHTML = '<div class="preview-empty"><div class="pe-icon">👁</div><p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p></div>';
     return;
   }
   const slides = splitSlides(raw);
