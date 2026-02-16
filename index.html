@@ -360,7 +360,7 @@ textarea::placeholder { color: var(--text-dim); }
 
 <!-- ── HEADER ── -->
 <div class="header">
-  <h1>📄 <span class="grad">Markdown → PowerPoint</span></h1>
+  <h1>ðŸ“„ <span class="grad">Markdown → PowerPoint</span></h1>
   <p>
     Split slides with <code>---</code> &middot;
     Two-columns with <code>|COL|</code> &middot;
@@ -378,7 +378,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Markdown file drop -->
       <div class="dz" id="dzMd">
-        <div class="dz-icon">📄</div>
+        <div class="dz-icon">ðŸ“„</div>
         <p><strong>Drop a .md file</strong> or click to upload</p>
       </div>
       <input type="file" id="fileMd" accept=".md,.markdown,.txt">
@@ -393,7 +393,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Image drop -->
       <div class="dz" id="dzImg" style="padding:14px 16px;">
-        <div class="dz-icon" style="font-size:22px; margin-bottom:2px;">🖼️</div>
+        <div class="dz-icon" style="font-size:22px; margin-bottom:2px;">ðŸ–¼ï¸</div>
         <p><strong>Drop images here</strong> or click &mdash; reference them as <code>![alt](filename)</code></p>
       </div>
       <input type="file" id="fileImg" accept="image/*" multiple>
@@ -445,7 +445,7 @@ textarea::placeholder { color: var(--text-dim); }
 
       <!-- Buttons -->
       <div class="btn-row">
-        <button class="btn btn-secondary" id="previewBtn">👁 Preview</button>
+        <button class="btn btn-secondary" id="previewBtn">ðŸ‘ Preview</button>
         <button class="btn btn-primary"    id="exportBtn" >⬇ Export PPTX</button>
       </div>
     </div>
@@ -457,7 +457,7 @@ textarea::placeholder { color: var(--text-dim); }
     <div class="card-body" style="padding:10px 12px 14px;">
       <div class="preview-scroll" id="previewScroll">
         <div class="preview-empty">
-          <div class="pe-icon">👁</div>
+          <div class="pe-icon">ðŸ‘</div>
           <p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p>
         </div>
       </div>
@@ -585,16 +585,41 @@ function rebuildStrip() {
 // PARSING
 // ═══════════════════════════════════════════════════════════════════
 
-/* Split raw markdown on --- into slide chunks */
+/* Split raw markdown on --- into slide chunks (Pandoc standard) */
 function splitSlides(raw) {
   return raw.split(/^\s*---\s*$/m).map(s=>s.trim()).filter(s=>s);
 }
 
-/* Detect if a chunk uses the two-column |COL| separator */
-function isTwoCol(chunk) { return /^\|COL\|$/m.test(chunk); }
+/* Detect if a chunk uses Pandoc's two-column ::: columns syntax */
+function isTwoCol(chunk) { 
+  return /^:::\s*columns\s*$/m.test(chunk) || /^\|COL\|$/m.test(chunk); // support both Pandoc and legacy
+}
 
-/* Split a two-col chunk into [left, right] */
+/* Split a two-col chunk into [left, right] - supports both Pandoc and legacy syntax */
 function splitCols(chunk) {
+  // Try Pandoc's ::: columns format first
+  if (/^:::\s*columns\s*$/m.test(chunk)) {
+    // Extract content between ::: columns and :::
+    const columnsMatch = chunk.match(/:::\s*columns\s*\n([\s\S]*?)\n:::/);
+    if (columnsMatch) {
+      const content = columnsMatch[1];
+      // Split on ::: column markers (note: singular "column" for individual columns)
+      const columnParts = content.split(/^:::\s*(?:\{\.column.*?\}|column)\s*$/m);
+      // Filter out empty parts and trim
+      const columns = columnParts.map(p => p.trim()).filter(p => p && !p.startsWith(':::'));
+      if (columns.length >= 2) {
+        return [columns[0], columns[1]];
+      }
+      // Fallback: if we have content but couldn't parse columns, split in half
+      if (columns.length === 1) {
+        const lines = columns[0].split('\n');
+        const mid = Math.floor(lines.length / 2);
+        return [lines.slice(0, mid).join('\n'), lines.slice(mid).join('\n')];
+      }
+    }
+  }
+  
+  // Legacy |COL| format
   const parts = chunk.split(/^\|COL\|$/m);
   return [parts[0].trim(), (parts[1]||'').trim()];
 }
@@ -694,7 +719,7 @@ function buildTableHtml(rows) {
 function renderPreview() {
   const raw = mdInput.value.trim();
   if (!raw) {
-    previewScroll.innerHTML = '<div class="preview-empty"><div class="pe-icon">👁</div><p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p></div>';
+    previewScroll.innerHTML = '<div class="preview-empty"><div class="pe-icon">ðŸ‘</div><p>Your slide previews appear here.<br>Start typing or upload a <strong>.md</strong> file.</p></div>';
     return;
   }
   const slides = splitSlides(raw);
