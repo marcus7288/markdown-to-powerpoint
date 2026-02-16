@@ -1,13 +1,14 @@
 # Markdown → PowerPoint Converter
 
-A client-side Markdown-to-PPTX converter. No backend required — the `.pptx` file is generated entirely in the browser using [PptxGenJS](https://github.com/alanm/PptxGenJS).
+A client-side Markdown-to-PPTX converter. No backend required — the `.pptx` file is generated entirely in the browser using [PptxGenJS](https://github.com/gitbrent/PptxGenJS).
 
 ---
 
 ## Features
 
+- **Pandoc-compatible syntax** — uses standard Pandoc markdown for slides (also supports legacy custom syntax)
 - **Slide splitting** — use `---` to start a new slide
-- **Two-column layouts** — use `|COL|` to split a slide into left/right columns
+- **Two-column layouts** — use `::: columns` / `::: column` (Pandoc standard) or `|COL|` (legacy)
 - **Image support** — drag images into the image drop-zone, then reference them with `![alt](filename.png)`. Remote URLs also work.
 - **6 polished themes** — Midnight Executive, Forest & Moss, Coral Energy, Ocean, Charcoal, Teal Trust
 - **16:9 and 4:3** layout options
@@ -19,19 +20,40 @@ A client-side Markdown-to-PPTX converter. No backend required — the `.pptx` fi
 
 | Syntax | What it does |
 |---|---|
-| `---` | New slide |
-| `# Title` | Slide title |
-| `## Heading` | Subtitle or body heading |
+| `---` | New slide (Pandoc standard) |
+| `# Title` | Slide title (level 1 heading) |
+| `## Heading` | Subtitle or body heading (level 2) |
 | `- item` | Bullet point |
 | `1. item` | Numbered list item |
 | `> text` | Blockquote |
 | `` `code` `` | Inline code |
 | ` ```...``` ` | Fenced code block |
-| `\|COL\|` | Split slide into two columns |
+| `::: columns` + `::: column` | Two-column layout (Pandoc standard) |
+| `\|COL\|` | Two-column layout (legacy, still supported) |
 | `![alt](file.png)` | Insert an uploaded image |
 | `\| H1 \| H2 \|` | Markdown table |
 
-### Two-Column Example
+### Two-Column Example (Pandoc Standard)
+
+```markdown
+## My Two-Column Slide
+
+::: columns
+
+::: column
+- Left column bullet one
+- Left bullet two
+:::
+
+::: column
+- Right column bullet one
+- Right bullet two
+:::
+
+:::
+```
+
+### Two-Column Example (Legacy)
 
 ```markdown
 ## My Two-Column Slide
@@ -45,7 +67,27 @@ Left column bullet one
 - Right bullet two
 ```
 
-### Image + Text Two-Column Example
+### Image + Text Two-Column Example (Pandoc Standard)
+
+```markdown
+## Photo Slide
+
+::: columns
+
+::: column
+![My photo](photo.jpg)
+:::
+
+::: column
+- Caption line one
+- Caption line two
+- More details here
+:::
+
+:::
+```
+
+### Image + Text Two-Column Example (Legacy)
 
 ```markdown
 ## Photo Slide
@@ -135,9 +177,10 @@ Every time you push a new commit to your GitHub repo, Netlify automatically rebu
 ## How It Works (under the hood)
 
 - The entire app is a single `index.html` file — no bundler, no npm install, no build step.
-- **PptxGenJS** is loaded from a CDN (`cdnjs.cloudflare.com`) and runs entirely in the browser.
+- **PptxGenJS** is loaded from a CDN (`cdn.jsdelivr.net`) and runs entirely in the browser.
 - Images are read via the `FileReader` API and stored as base64 data URIs in memory.
 - The `.pptx` file is generated client-side and downloaded via a programmatic click on a temporary object URL.
+- **Pandoc-compatible** — uses standard Pandoc markdown syntax for slides, with backward compatibility for legacy custom syntax.
 
 ---
 
